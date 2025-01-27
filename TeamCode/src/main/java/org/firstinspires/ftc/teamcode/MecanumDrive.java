@@ -1,89 +1,95 @@
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
-@TeleOp(name = "Mecanum Drive", group = "Linear Opmode")
+@TeleOp(name = "Mecanum Drive with Reassigned Grabber Controls", group = "TeleOp")
 public class MecanumDrive extends LinearOpMode {
 
     private RobotHardware robot;
-
-    // Constants for smooth acceleration and deceleration
-    private static final double ACCELERATION_INCREMENT = 0.05;
-    private static final double DEADBAND = 0.05;
+    private boolean upAndDownState = false; // Tracks toggle state for upAndDownServo
+    private boolean previousBState = false; // Tracks the previous state of the B button
+    private boolean claw2GrabState = false; // Tracks the toggle state for Claw2 Grab Servo
+    private boolean previousAState = false; // Tracks the previous state of the A button
 
     @Override
-    public void runOpMode() {
-        // Initialize the hardware variables
+    public void runOpMode() throws InterruptedException {
         robot = new RobotHardware(hardwareMap);
 
-        telemetry.addData("Status", "Initialized");
+        telemetry.addLine("Ready for start");
         telemetry.update();
 
         waitForStart();
 
-        // Variable to hold the previous motor power
-        double previousPowerFL = 0, previousPowerFR = 0, previousPowerBL = 0, previousPowerBR = 0;
-
         while (opModeIsActive()) {
-            // Get joystick inputs
-            double y = -gamepad1.left_stick_y; // Forward/backward
-            double x = gamepad1.left_stick_x * 1.1; // Strafing (adjusted for mecanum wheel skew)
-            double rx = gamepad1.right_stick_x; // Rotation
+            // **Driver Controls (Gamepad A)**
+            double drive = -gamepad1.left_stick_y; // Forward/Backward
+            double strafe = gamepad1.left_stick_x; // Left/Right
+            double rotate = gamepad1.right_stick_x; // Rotation
 
-            // Calculate motor powers
-            double frontLeftPower = y + x + rx;
-            double frontRightPower = y - x - rx;
-            double rearLeftPower = y - x + rx;
-            double rearRightPower = y + x - rx;
+            double frontLeftPower = drive + strafe + rotate;
+            double frontRightPower = drive - strafe - rotate;
+            double rearLeftPower = drive - strafe + rotate;
+            double rearRightPower = drive + strafe - rotate;
 
-            // Normalize motor powers to keep within -1 to 1
-            double maxPower = Math.max(Math.abs(frontLeftPower), Math.max(Math.abs(frontRightPower),
-                    Math.max(Math.abs(rearLeftPower), Math.abs(rearRightPower))));
-            if (maxPower > 1.0) {
-                frontLeftPower /= maxPower;
-                frontRightPower /= maxPower;
-                rearLeftPower /= maxPower;
-                rearRightPower /= maxPower;
+            double maxPower = Math.max(1.0, Math.max(
+                    Math.abs(frontLeftPower),
+                    Math.max(Math.abs(frontRightPower),
+                    Math.max(Math.abs(rearLeftPower),
+                    Math.abs(rearRightPower)))));
+
+            robot.frontLeftDrive.setPower(frontLeftPower / maxPower);
+            robot.frontRightDrive.setPower(frontRightPower / maxPower);
+            robot.rearLeftDrive.setPower(rearLeftPower / maxPower);
+            robot.rearRightDrive.setPower(rearRightPower / maxPower);
+
+            // **Operator Controls (Gamepad B)**
+
+            // Grabber 1
+            robot.grabber1LiftMotor.setPower(-gamepad2.left_stick_y);
+
+            if (gamepad2.left_bumper) {
+                robot.arm1RotationServo.setPosition(0.0); // Rotate Arm1 Left
+            } else if (gamepad2.right_bumper) {
+                robot.arm1RotationServo.setPosition(1.0); // Rotate Arm1 Right
             }
 
-            // Smooth acceleration and deceleration
-            frontLeftPower = smoothPower(previousPowerFL, frontLeftPower);
-            frontRightPower = smoothPower(previousPowerFR, frontRightPower);
-            rearLeftPower = smoothPower(previousPowerBL, rearLeftPower);
-            rearRightPower = smoothPower(previousPowerBR, rearRightPower);
+            if (gamepad2.left_trigger > 0.5) {
+                robot.claw1GrabServo.setPosition(0.0); // Open Claw1
+            } else if (gamepad2.right_trigger > 0.5) {
+                robot.claw1GrabServo.setPosition(1.0); // Close Claw1
+            }
 
-            // Set motor powers
-            robot.frontLeftDrive.setPower(frontLeftPower);
-            robot.frontRightDrive.setPower(frontRightPower);
-            robot.rearLeftDrive.setPower(rearLeftPower);
-            robot.rearRightDrive.setPower(rearRightPower);
+            // Grabber 2
+            double slidePower = gamepad2.right_stick_y;
+            robot.slideLeftServo.setPosition(0.5 + slidePower / 2); // Slide Left Servo
+            robot.slideRightServo.setPosition(0.5 - slidePower / 2); // Slide Right Servo
 
-            // Update previous motor power variables
-            previousPowerFL = frontLeftPower;
-            previousPowerFR = frontRightPower;
-            previousPowerBL = rearLeftPower;
-            previousPowerBR = rearRightPower;
+            double claw2Rotation = gamepad2.right_stick_x;
+            if (claw2Rotation != 0) {
+                robot.claw2RotationServo.setPosition(0.5 + (claw2Rotation / 2)); // Adjust Claw2 Rotation
+            }
 
-            // Telemetry for debugging
-            telemetry.addData("FL Power", frontLeftPower);
-            telemetry.addData("FR Power", frontRightPower);
-            telemetry.addData("RL Power", rearLeftPower);
-            telemetry.addData("RR Power", rearRightPower);
+            // Claw2 Grab Toggle using A Button
+            if (gamepad2.a && !previousAState) {
+                claw2GrabState = !claw2GrabState;
+                robot.claw2GrabServo.setPosition(claw2GrabState ? 1.0 : 0.0);
+            }
+            previousAState = gamepad2.a;
+
+            // UpAndDownServo Toggle using B Button
+            if (gamepad2.b && !previousBState) {
+                upAndDownState = !upAndDownState;
+                robot.upAndDownServo.setPosition(upAndDownState ? 1.0 : 0.0);
+            }
+            previousBState = gamepad2.b;
+
+            // Telemetry for Debugging
+            telemetry.addData("Claw2 Grab State", claw2GrabState ? "Closed" : "Open");
+            telemetry.addData("UpAndDownServo State", upAndDownState ? "Up" : "Down");
+            telemetry.addData("Slide Power", slidePower);
+            telemetry.addData("Claw2 Rotation", claw2Rotation);
             telemetry.update();
-        }
-    }
-
-    // Smooth power adjustment
-    private double smoothPower(double previousPower, double targetPower) {
-        if (Math.abs(targetPower - previousPower) > ACCELERATION_INCREMENT) {
-            if (targetPower > previousPower) {
-                return previousPower + ACCELERATION_INCREMENT;
-            } else {
-                return previousPower - ACCELERATION_INCREMENT;
-            }
-        } else {
-            return targetPower;
         }
     }
 }
