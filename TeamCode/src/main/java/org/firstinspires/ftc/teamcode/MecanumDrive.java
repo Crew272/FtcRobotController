@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.hardware.DcMotor;
 
 @TeleOp(name = "Mecanum Drive with Reassigned Grabber Controls", group = "TeleOp")
 public class MecanumDrive extends LinearOpMode {
@@ -35,8 +36,8 @@ public class MecanumDrive extends LinearOpMode {
             double maxPower = Math.max(1.0, Math.max(
                     Math.abs(frontLeftPower),
                     Math.max(Math.abs(frontRightPower),
-                    Math.max(Math.abs(rearLeftPower),
-                    Math.abs(rearRightPower)))));
+                            Math.max(Math.abs(rearLeftPower),
+                                    Math.abs(rearRightPower)))));
 
             robot.frontLeftDrive.setPower(frontLeftPower / maxPower);
             robot.frontRightDrive.setPower(frontRightPower / maxPower);
@@ -46,8 +47,25 @@ public class MecanumDrive extends LinearOpMode {
             // **Operator Controls (Gamepad B)**
 
             // Grabber 1
-            robot.grabber1LiftMotor.setPower(-gamepad2.left_stick_y);
-
+            //robot.grabber1LiftMotor.setPower(-gamepad2.left_stick_y);
+            double liftPower = gamepad2.left_stick_y; // Invert for correct movement
+            // Reset encoder when the limit switch is pressed
+            if (robot.isLiftAtBottom()) {
+                robot.grabber1LiftMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+                robot.grabber1LiftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            }
+            // Prevent downward movement if limit switch is engaged
+            if (robot.isLiftAtBottom() && liftPower > 0) {
+                robot.grabber1LiftMotor.setPower(0);
+            }
+            // Prevent going too high
+            else if (robot.grabber1LiftMotor.getCurrentPosition() <= RobotHardware.LIFT_MAX_HEIGHT_TICKS && liftPower < 0) {
+                robot.grabber1LiftMotor.setPower(0);
+            }
+            // Allow movement within limits
+            else {
+                robot.grabber1LiftMotor.setPower(liftPower);
+            }
             if (gamepad2.left_bumper) {
                 robot.arm1RotationServo.setPosition(0.0); // Rotate Arm1 Left
             } else if (gamepad2.right_bumper) {
@@ -89,6 +107,9 @@ public class MecanumDrive extends LinearOpMode {
             telemetry.addData("UpAndDownServo State", upAndDownState ? "Up" : "Down");
             telemetry.addData("Slide Power", slidePower);
             telemetry.addData("Claw2 Rotation", claw2Rotation);
+            // Telemetry for debugging
+            telemetry.addData("Lift Position", robot.grabber1LiftMotor.getCurrentPosition());
+            telemetry.addData("Limit Switch", robot.isLiftAtBottom() ? "Pressed" : "Not Pressed");
             telemetry.update();
         }
     }

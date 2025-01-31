@@ -37,7 +37,7 @@ public class RobotHardware1 {
     private HardwareMap hardwareMap;
 
     // Constructor
-    public RobotHardware(HardwareMap hardwareMap) {
+    public RobotHardware1(HardwareMap hardwareMap) {
         this.hardwareMap = hardwareMap;
         initializeHardware();
     }

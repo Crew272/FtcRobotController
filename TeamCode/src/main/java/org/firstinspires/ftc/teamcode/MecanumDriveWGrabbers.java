@@ -41,7 +41,7 @@ public class MecanumDriveWGrabbers extends LinearOpMode {
             // Operator Controls (Gamepad B)
 
             // Grabber 1 (Left Side)
-            robot.grabber1LiftMotor.setPower(-gamepad2.left_stick_y);
+            robot.grabber1LiftMotor.setPower(gamepad2.left_stick_y);
 
             if (gamepad2.left_bumper) {
                 robot.arm1RotationServo.setPosition(0.0); // Rotate Left
