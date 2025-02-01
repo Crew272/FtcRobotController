@@ -12,11 +12,14 @@ public class MecanumDrive extends LinearOpMode {
     private boolean previousBState = false; // Tracks the previous state of the B button
     private boolean claw2GrabState = false; // Tracks the toggle state for Claw2 Grab Servo
     private boolean previousAState = false; // Tracks the previous state of the A button
+    private double arm1RotationPosition = 0.9; // Start at .9
 
     @Override
     public void runOpMode() throws InterruptedException {
         robot = new RobotHardware(hardwareMap);
-
+        // Initialize the servo position before the loop starts
+        robot.arm1RotationServo.setPosition(arm1RotationPosition);
+        robot.claw1GrabServo.setPosition(1.0); //close claw on specimen
         telemetry.addLine("Ready for start");
         telemetry.update();
 
@@ -66,11 +69,26 @@ public class MecanumDrive extends LinearOpMode {
             else {
                 robot.grabber1LiftMotor.setPower(liftPower);
             }
-            if (gamepad2.left_bumper) {
-                robot.arm1RotationServo.setPosition(0.0); // Rotate Arm1 Left
-            } else if (gamepad2.right_bumper) {
-                robot.arm1RotationServo.setPosition(1.0); // Rotate Arm1 Right
+
+            // Read joystick X-axis
+            double armMove = gamepad2.left_stick_x;
+
+            // Deadzone to prevent jitter
+            if (Math.abs(armMove) > 0.05) {
+                // Quadratic scaling for smooth acceleration
+                double movement = Math.signum(armMove) * Math.pow(Math.abs(armMove), 2) * 0.01; // Adjust for speed
+
+                // Update servo position gradually based on joystick direction
+                arm1RotationPosition += movement;
             }
+
+            // Clamp position to servo limits (0.0 to 1.0)
+            arm1RotationPosition = Math.max(0.0, Math.min(0.9, arm1RotationPosition));
+
+            // Apply new position to servo
+            robot.arm1RotationServo.setPosition(arm1RotationPosition);
+
+
 
             if (gamepad2.left_trigger > 0.5) {
                 robot.claw1GrabServo.setPosition(0.0); // Open Claw1
@@ -107,6 +125,7 @@ public class MecanumDrive extends LinearOpMode {
             telemetry.addData("UpAndDownServo State", upAndDownState ? "Up" : "Down");
             telemetry.addData("Slide Power", slidePower);
             telemetry.addData("Claw2 Rotation", claw2Rotation);
+            telemetry.addData("Arm Rotation Servo Position", arm1RotationPosition);
             // Telemetry for debugging
             telemetry.addData("Lift Position", robot.grabber1LiftMotor.getCurrentPosition());
             telemetry.addData("Limit Switch", robot.isLiftAtBottom() ? "Pressed" : "Not Pressed");

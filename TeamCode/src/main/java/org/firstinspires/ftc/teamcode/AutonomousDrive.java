@@ -9,7 +9,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 public class AutonomousDrive extends LinearOpMode {
 
     private RobotHardware robot;
-    private final double TICKS_PER_INCH = 1059.4; // Adjusted for updated specs
+    private final double TICKS_PER_INCH = 7.288; //23.094; // Adjusted for updated specs
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -27,17 +27,18 @@ public class AutonomousDrive extends LinearOpMode {
         waitForStart();
 
         // Execute movements
-        driveForward(12);    // Drive forward 1'
-        strafeRight(25);     // Strafe right 2' 1"
-        driveForward(39);    // Drive forward 3' 3"
-        strafeRight(10);     // Strafe right 10"
-        driveBackward(53);   // Backward 4' 5"
-        driveForward(53);    // Forward 4' 5"
-        strafeRight(9);      // Strafe right 9"
-        driveBackward(53);   // Backward 4' 5"
-        driveForward(53);    // Forward 4' 5"
-        strafeRight(7);      // Strafe right 7"
-        driveBackward(53);   // Backward 4' 5"
+        //driveForward(12);    // Drive forward 1'
+        //strafeRight(10);     // Strafe right 2' 1"
+        //driveForward(39);    // Drive forward 3' 3"
+        //strafeRight(10);     // Strafe right 10"
+        //driveBackward(12);   // Backward 4' 5"
+        //driveForward(53);    // Forward 4' 5"
+        //strafeRight(9);      // Strafe right 9"
+        //driveBackward(53);   // Backward 4' 5"
+        //driveForward(53);    // Forward 4' 5"
+        //strafeRight(7);      // Strafe right 7"
+        //driveBackward(53);   // Backward 4' 5"
+        strafeLeft(10);
 
         telemetry.addLine("Autonomous complete!");
         telemetry.update();

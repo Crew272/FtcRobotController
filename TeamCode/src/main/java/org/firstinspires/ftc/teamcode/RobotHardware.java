@@ -33,7 +33,7 @@ public class RobotHardware {
     private HardwareMap hardwareMap;
 
     // Encoder limit for the lift
-    public static final int LIFT_MAX_HEIGHT_TICKS = -2800;
+    public static final int LIFT_MAX_HEIGHT_TICKS = -4000;
 
     // Constructor
     public RobotHardware(HardwareMap hardwareMap) {
