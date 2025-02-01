@@ -27,9 +27,14 @@ public class MecanumDrive extends LinearOpMode {
 
         while (opModeIsActive()) {
             // **Driver Controls (Gamepad A)**
-            double drive = -gamepad1.left_stick_y; // Forward/Backward
-            double strafe = gamepad1.left_stick_x; // Left/Right
-            double rotate = gamepad1.right_stick_x; // Rotation
+//            double drive = -gamepad1.left_stick_y; // Forward/Backward
+//            double strafe = gamepad1.left_stick_x; // Left/Right
+//            double rotate = gamepad1.right_stick_x; // Rotation
+            double speedModifier = 0.5; // Reduce speed (1.0 = full speed, 0.3 = slow speed)
+
+            double drive = -gamepad1.left_stick_y * speedModifier;
+            double strafe = gamepad1.left_stick_x * speedModifier;
+            double rotate = gamepad1.right_stick_x * speedModifier;
 
             double frontLeftPower = drive + strafe + rotate;
             double frontRightPower = drive - strafe - rotate;
