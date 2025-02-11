@@ -57,13 +57,13 @@ public class MecanumDriveWGrabbers extends LinearOpMode {
 
             // Grabber 2 (Right Side)
             double slidePower = gamepad2.right_stick_y;
-            robot.slideLeftServo.setPosition(0.5 + slidePower / 2);
+            // robot.slideLeftServo.setPosition(0.5 + slidePower / 2);
             robot.slideRightServo.setPosition(0.5 - slidePower / 2);
 
             if (gamepad2.a) {
-                robot.claw2RotationServo.setPosition(0.0); // Rotate Claw Left
+             //   robot.intake1.setPosition(0.0); // Rotate Claw Left
             } else if (gamepad2.b) {
-                robot.claw2RotationServo.setPosition(1.0); // Rotate Claw Right
+              //  robot.intake1.setPosition(1.0); // Rotate Claw Right
             }
 
             if (gamepad2.left_trigger > 0.5) {
