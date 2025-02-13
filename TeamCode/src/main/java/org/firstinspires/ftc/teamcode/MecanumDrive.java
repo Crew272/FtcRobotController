@@ -8,8 +8,9 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 public class MecanumDrive extends LinearOpMode {
 
     private RobotHardware robot;
-    private double arm1RotationPosition = 0.9; // Start at .9
-    private double upAndDownPosition = 0.9; // Start at .9
+    private double arm1RotationPosition = 0.8; // Start at .8
+    private double upAndDownPosition = 0.4; // Start at .4
+    private double slidePosition = 0.4;  // Start at .4 for slide, goes out to .57
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -17,6 +18,7 @@ public class MecanumDrive extends LinearOpMode {
         // Initialize the servo position before the loop starts
         robot.arm1RotationServo.setPosition(arm1RotationPosition);
         robot.upAndDownServo.setPosition(upAndDownPosition);
+        robot.slideRightServo.setPosition(slidePosition);
         robot.claw1GrabServo.setPosition(1.0); //close claw on specimen
         telemetry.addLine("Ready for start");
         telemetry.update();
@@ -80,7 +82,7 @@ public class MecanumDrive extends LinearOpMode {
                 arm1RotationPosition += movement;
             }
 
-            // Clamp position to servo limits (0.0 to 1.0)
+            // Clamp position to servo limits (0.0 to 0.9)
             arm1RotationPosition = Math.max(0.0, Math.min(0.9, arm1RotationPosition));
 
             // Apply new position to servo
@@ -95,10 +97,23 @@ public class MecanumDrive extends LinearOpMode {
             }
 
             // Grabber 2
-            double slidePower = gamepad2.right_stick_y;
-            // robot.slideLeftServo.setPosition(0.5 + slidePower / 2); // Slide Left Servo
-            robot.slideRightServo.setPosition(0.5 - slidePower / 2); // Slide Right Servo
 
+            // Read joystick X-axis
+            double slidePower = -gamepad2.right_stick_y;
+            // Deadzone to prevent jitter
+            if (Math.abs(slidePower) > 0.05) {
+                // Quadratic scaling for smooth acceleration
+                double movement = Math.signum(slidePower) * Math.pow(Math.abs(slidePower), 2) * 0.01; // Adjust for speed
+
+                // Update servo position gradually based on joystick direction
+                slidePosition += movement;
+            }
+
+            // Clamp position to servo limits (0.0 to 1.0)
+            slidePosition = Math.max(0.4, Math.min(0.57, slidePosition));
+
+            // Apply new position to servo
+            robot.slideRightServo.setPosition(slidePosition);
 
             // Read joystick X-axis
             double upAndDownArmMove = gamepad2.right_stick_x;
@@ -113,7 +128,7 @@ public class MecanumDrive extends LinearOpMode {
             }
 
             // Clamp position to servo limits (0.0 to 1.0)
-            upAndDownPosition = Math.max(0.0, Math.min(0.9, upAndDownPosition));
+            upAndDownPosition = Math.max(0.0, Math.min(0.4, upAndDownPosition));
 
             // Apply new position to servo
             robot.upAndDownServo.setPosition(upAndDownPosition);
@@ -128,10 +143,9 @@ public class MecanumDrive extends LinearOpMode {
             }
 
             // Telemetry for Debugging
-            telemetry.addData("Slide Power", slidePower);
-            //telemetry.addData("Claw2 Rotation", claw2Rotation);
+            telemetry.addData("Slide Position", slidePosition);
             telemetry.addData("Arm Rotation Servo Position", arm1RotationPosition);
-            // Telemetry for debugging
+            telemetry.addData("Up and Down", upAndDownPosition);
             telemetry.addData("Lift Position", robot.grabber1LiftMotor.getCurrentPosition());
             telemetry.addData("Limit Switch", robot.isLiftAtBottom() ? "Pressed" : "Not Pressed");
             telemetry.update();
