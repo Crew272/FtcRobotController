@@ -8,9 +8,9 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 public class MecanumDrive extends LinearOpMode {
 
     private RobotHardware robot;
-    private double arm1RotationPosition = 0.8; // Start at .8
+    private double arm1RotationPosition = 0.0; // Start at .8
     private double upAndDownPosition = 0.4; // Start at .4
-    private double slidePosition = 0.4;  // Start at .4 for slide, goes out to .57
+    private double slidePosition = 0.3;  // Start at .4 for slide, goes out to .57
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -110,7 +110,7 @@ public class MecanumDrive extends LinearOpMode {
             }
 
             // Clamp position to servo limits (0.0 to 1.0)
-            slidePosition = Math.max(0.4, Math.min(0.57, slidePosition));
+            slidePosition = Math.max(0.3, Math.min(0.5, slidePosition));
 
             // Apply new position to servo
             robot.slideRightServo.setPosition(slidePosition);
