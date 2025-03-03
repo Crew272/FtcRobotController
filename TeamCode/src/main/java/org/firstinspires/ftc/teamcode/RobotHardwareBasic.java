@@ -1,50 +1,85 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 public class RobotHardwareBasic {
-    // Motor declarations with your specific names
-    public DcMotor frontLeftDrive = null;
-    public DcMotor frontRightDrive = null;
-    public DcMotor rearLeftDrive = null;
-    public DcMotor rearRightDrive = null;
+    /* Public OpMode members. */
+    public DcMotorEx frontLeftDrive;
+    public DcMotorEx frontRightDrive;
+    public DcMotorEx rearLeftDrive;
+    public DcMotorEx rearRightDrive;
+
+    /* Local OpMode members. */
+    HardwareMap hwMap;
+    private ElapsedTime period = new ElapsedTime();
 
     // Constants for encoder counts
-    public static final double COUNTS_PER_MOTOR_REV = 145.1; // GoBilda 5202 series 1150 RPM motor
-    public static final double DRIVE_GEAR_REDUCTION = 2.0;    // The motor gear is smaller then the output gear
-    public static final double WHEEL_DIAMETER_INCHES = 3.78;  // GoBilda Mecanum wheel diameter
+    public static final double COUNTS_PER_MOTOR_REV = 145.1;
+    public static final double DRIVE_GEAR_REDUCTION = 2.0;
+    public static final double WHEEL_DIAMETER_INCHES = 3.78;
     public static final double COUNTS_PER_INCH = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION) /
             (WHEEL_DIAMETER_INCHES * Math.PI);
 
-    // Constants for rotation
-    public static final double ROBOT_DIAMETER_INCHES = 18.0; // Measure your robot's turning diameter
-    public static final double COUNTS_PER_DEGREE =
-            (ROBOT_DIAMETER_INCHES * Math.PI * COUNTS_PER_INCH) / 360.0;
+    // Speed control
+    private static final double MAX_DRIVE_SPEED = 0.6;
+    private static final double MIN_DRIVE_SPEED = 0.2;
 
-    // Constructor
-    public RobotHardwareBasic(HardwareMap hwMap) {
-        initialize(hwMap);
+    /* Constructor */
+    public RobotHardwareBasic() {
     }
 
-    private void initialize(HardwareMap hwMap) {
-        // Initialize motors with your specific names
-        frontLeftDrive = hwMap.get(DcMotor.class, "frontLeftDrive");
-        frontRightDrive = hwMap.get(DcMotor.class, "frontRightDrive");
-        rearLeftDrive = hwMap.get(DcMotor.class, "rearLeftDrive");
-        rearRightDrive = hwMap.get(DcMotor.class, "rearRightDrive");
+    /* Initialize standard Hardware interfaces */
+    public void init(HardwareMap ahwMap) {
+        // Save reference to Hardware map
+        hwMap = ahwMap;
 
-        // Set motor directions (adjust these based on your robot's configuration)
+        // Define and Initialize Motors (note we're using DcMotorEx now)
+        frontLeftDrive = hwMap.get(DcMotorEx.class, "frontLeftDrive");
+        frontRightDrive = hwMap.get(DcMotorEx.class, "frontRightDrive");
+        rearLeftDrive = hwMap.get(DcMotorEx.class, "rearLeftDrive");
+        rearRightDrive = hwMap.get(DcMotorEx.class, "rearRightDrive");
+
+        // Set motor directions
         frontLeftDrive.setDirection(DcMotor.Direction.REVERSE);
         frontRightDrive.setDirection(DcMotor.Direction.FORWARD);
         rearLeftDrive.setDirection(DcMotor.Direction.REVERSE);
         rearRightDrive.setDirection(DcMotor.Direction.FORWARD);
 
-        // Set zero power behavior
-        setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        // Set PIDF coefficients
+        PIDFCoefficients pidfCoefficients = new PIDFCoefficients(5.0, 0.0, 0.0, 0.0);
+        frontLeftDrive.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfCoefficients);
+        frontRightDrive.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfCoefficients);
+        rearLeftDrive.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfCoefficients);
+        rearRightDrive.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfCoefficients);
 
-        // Stop and reset encoders
+        // Set all motors to zero power
+        setPower(0);
+
+        // Set all motors to run with encoders
+        setRunMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        // Set zero power behavior to BRAKE
+        setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+    }
+
+    public void moveToPosition(int targetPosition, double power) {
+        // Reset encoders
         resetEncoders();
+
+        // Set target position
+        setTargetPosition(targetPosition);
+
+        // Set mode to RUN_TO_POSITION
+        setRunMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        // Set power
+        setPower(Math.abs(power));
+
+        // Motors will automatically stop at target position
     }
 
     public void setZeroPowerBehavior(DcMotor.ZeroPowerBehavior behavior) {
@@ -61,11 +96,38 @@ public class RobotHardwareBasic {
         rearRightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
     }
 
-    public void setTargetPosition(int counts) {
-        frontLeftDrive.setTargetPosition(counts);
-        frontRightDrive.setTargetPosition(counts);
-        rearLeftDrive.setTargetPosition(counts);
-        rearRightDrive.setTargetPosition(counts);
+    public void setPower(double power) {
+        // Limit power to MAX_DRIVE_SPEED
+        power = Math.max(-MAX_DRIVE_SPEED, Math.min(power, MAX_DRIVE_SPEED));
+
+        frontLeftDrive.setPower(power);
+        frontRightDrive.setPower(power);
+        rearLeftDrive.setPower(power);
+        rearRightDrive.setPower(power);
+    }
+
+    public void setIndividualPowers(double fl, double fr, double bl, double br) {
+        frontLeftDrive.setPower(Math.max(-MAX_DRIVE_SPEED, Math.min(fl, MAX_DRIVE_SPEED)));
+        frontRightDrive.setPower(Math.max(-MAX_DRIVE_SPEED, Math.min(fr, MAX_DRIVE_SPEED)));
+        rearLeftDrive.setPower(Math.max(-MAX_DRIVE_SPEED, Math.min(bl, MAX_DRIVE_SPEED)));
+        rearRightDrive.setPower(Math.max(-MAX_DRIVE_SPEED, Math.min(br, MAX_DRIVE_SPEED)));
+    }
+
+    public int getCurrentPosition() {
+        return (frontLeftDrive.getCurrentPosition() + frontRightDrive.getCurrentPosition() +
+                rearLeftDrive.getCurrentPosition() + rearRightDrive.getCurrentPosition()) / 4;
+    }
+
+    public boolean isBusy() {
+        return frontLeftDrive.isBusy() && frontRightDrive.isBusy() &&
+                rearLeftDrive.isBusy() && rearRightDrive.isBusy();
+    }
+
+    public void setTargetPosition(int position) {
+        frontLeftDrive.setTargetPosition(position);
+        frontRightDrive.setTargetPosition(position);
+        rearLeftDrive.setTargetPosition(position);
+        rearRightDrive.setTargetPosition(position);
     }
 
     public void setRunMode(DcMotor.RunMode mode) {
@@ -74,37 +136,4 @@ public class RobotHardwareBasic {
         rearLeftDrive.setMode(mode);
         rearRightDrive.setMode(mode);
     }
-
-    public void setPower(double power) {
-        frontLeftDrive.setPower(power);
-        frontRightDrive.setPower(power);
-        rearLeftDrive.setPower(power);
-        rearRightDrive.setPower(power);
-    }
-
-    public void setIndividualPowers(double fl, double fr, double bl, double br) {
-        frontLeftDrive.setPower(fl);
-        frontRightDrive.setPower(fr);
-        rearLeftDrive.setPower(bl);
-        rearRightDrive.setPower(br);
-    }
-
-    public void setRotationPowers(double power) {
-        frontLeftDrive.setPower(power);
-        frontRightDrive.setPower(-power);
-        rearLeftDrive.setPower(power);
-        rearRightDrive.setPower(-power);
-    }
-
-    public boolean isBusy() {
-        return frontLeftDrive.isBusy() && frontRightDrive.isBusy() &&
-                rearLeftDrive.isBusy() && rearRightDrive.isBusy();
-    }
-
-    public int getCurrentPosition() {
-        // Returns average of all encoders
-        return (frontLeftDrive.getCurrentPosition() + frontRightDrive.getCurrentPosition() +
-                rearLeftDrive.getCurrentPosition() + rearRightDrive.getCurrentPosition()) / 4;
-    }
 }
-

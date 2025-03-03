@@ -3,150 +3,181 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
-@Autonomous(name = "Autonomous Basic with Mecanum", group = "Autonomous")
+@Autonomous(name="Basic: Autonomous", group="Basic")
 public class AutonomousBasic extends LinearOpMode {
 
-    private RobotHardwareBasic robot;
+    private RobotHardwareBasic robot = new RobotHardwareBasic();
+    private ElapsedTime runtime = new ElapsedTime();
+
+    // Movement parameters
     private static final double DRIVE_SPEED = 0.5;
-    private static final double STRAFE_SPEED = 0.5;
     private static final double TURN_SPEED = 0.4;
+    private static final double STRAFE_SPEED = 0.5;
+
+    // Robot physical constants
+    private static final double ROBOT_DIAMETER_INCHES = 18.0; // Adjust based on your robot
 
     @Override
-    public void runOpMode() throws InterruptedException {
-        robot = new RobotHardwareBasic(hardwareMap);
+    public void runOpMode() {
+        robot.init(hardwareMap);
 
-        telemetry.addLine("Robot Ready!");
+        // Send telemetry message to signify robot waiting
+        telemetry.addData("Status", "Ready to run");
         telemetry.update();
 
         waitForStart();
 
         if (opModeIsActive()) {
             // Example autonomous sequence
+            driveForward(24.0);    // Drive forward 24 inches
+            sleep(250);            // Pause for stability
+            turnRight(90.0);       // Turn 90 degrees right
+            sleep(250);
             driveForward(12.0);    // Drive forward 12 inches
-            sleep(250);            // Brief pause between movements
-            turnRight(90);         // Turn 90 degrees right
             sleep(250);
-            strafeRight(24.0);     // Strafe right 24 inches
-            sleep(250);
-            driveBackward(12.0);   // Drive backward 12 inches
+            strafeRight(12.0);     // Strafe right 12 inches
+
+            telemetry.addData("Path", "Complete");
+            telemetry.update();
         }
     }
 
-    private void driveForward(double inches) {
-        moveRobot(inches, Direction.FORWARD);
+    public void driveForward(double inches) {
+        int targetCounts = (int)(inches * robot.COUNTS_PER_INCH);
+
+        // Reset encoders
+        robot.resetEncoders();
+
+        // Set target position
+        robot.setTargetPosition(targetCounts);
+
+        // Set to RUN_TO_POSITION mode
+        robot.setRunMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        // Start moving
+        robot.setPower(DRIVE_SPEED);
+
+        // Wait for movement to complete
+        while (opModeIsActive() && robot.isBusy()) {
+            telemetry.addData("Moving", "Forward: %2.1f inches", inches);
+            telemetry.addData("Target", targetCounts);
+            telemetry.addData("Current Pos", robot.getCurrentPosition());
+            telemetry.update();
+        }
+
+        // Stop all motion
+        robot.setPower(0);
+        robot.setRunMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        // Optional pause
+        sleep(250);
     }
 
-    private void driveBackward(double inches) {
-        moveRobot(inches, Direction.BACKWARD);
+    public void driveBackward(double inches) {
+        driveForward(-inches);
     }
 
-    private void strafeLeft(double inches) {
-        moveRobot(inches, Direction.STRAFE_LEFT);
+    public void strafeRight(double inches) {
+        int targetCounts = (int)(inches * robot.COUNTS_PER_INCH);
+
+        robot.resetEncoders();
+
+        // Set individual targets for strafing
+        robot.frontLeftDrive.setTargetPosition(targetCounts);
+        robot.frontRightDrive.setTargetPosition(-targetCounts);
+        robot.rearLeftDrive.setTargetPosition(-targetCounts);
+        robot.rearRightDrive.setTargetPosition(targetCounts);
+
+        robot.setRunMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        // Set power for strafing
+        robot.setIndividualPowers(STRAFE_SPEED, -STRAFE_SPEED, -STRAFE_SPEED, STRAFE_SPEED);
+
+        // Wait for movement to complete
+        while (opModeIsActive() && robot.isBusy()) {
+            telemetry.addData("Strafing", "Right: %2.1f inches", inches);
+            telemetry.addData("Current Pos", robot.getCurrentPosition());
+            telemetry.update();
+        }
+
+        // Stop all motion
+        robot.setPower(0);
+        robot.setRunMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        sleep(250);
     }
 
-    private void strafeRight(double inches) {
-        moveRobot(inches, Direction.STRAFE_RIGHT);
+    public void strafeLeft(double inches) {
+        strafeRight(-inches);
     }
 
     public void turnRight(double degrees) {
-        rotate(degrees);
+        // Calculate the number of encoder counts for the turn
+        double inches = (degrees / 360.0) * Math.PI * ROBOT_DIAMETER_INCHES;
+        int targetCounts = (int)(inches * robot.COUNTS_PER_INCH);
+
+        robot.resetEncoders();
+
+        // Set individual targets for turning
+        robot.frontLeftDrive.setTargetPosition(targetCounts);
+        robot.frontRightDrive.setTargetPosition(-targetCounts);
+        robot.rearLeftDrive.setTargetPosition(targetCounts);
+        robot.rearRightDrive.setTargetPosition(-targetCounts);
+
+        robot.setRunMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        // Set power for turning
+        robot.setIndividualPowers(TURN_SPEED, -TURN_SPEED, TURN_SPEED, -TURN_SPEED);
+
+        // Wait for movement to complete
+        while (opModeIsActive() && robot.isBusy()) {
+            telemetry.addData("Turning", "Right: %2.1f degrees", degrees);
+            telemetry.addData("Target", targetCounts);
+            telemetry.addData("Current Pos", robot.getCurrentPosition());
+            logMotorPositions();
+            telemetry.update();
+        }
+
+        // Stop all motion
+        robot.setPower(0);
+        robot.setRunMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        sleep(250);
     }
 
     public void turnLeft(double degrees) {
-        rotate(-degrees);
+        turnRight(-degrees);
     }
 
-    private enum Direction {
-        FORWARD,
-        BACKWARD,
-        STRAFE_LEFT,
-        STRAFE_RIGHT
+    private void logMotorPositions() {
+        telemetry.addData("FL Position", robot.frontLeftDrive.getCurrentPosition());
+        telemetry.addData("FR Position", robot.frontRightDrive.getCurrentPosition());
+        telemetry.addData("RL Position", robot.rearLeftDrive.getCurrentPosition());
+        telemetry.addData("RR Position", robot.rearRightDrive.getCurrentPosition());
     }
 
-    private void moveRobot(double inches, Direction direction) {
-        int counts = (int)(inches * robot.COUNTS_PER_INCH);
+    // Test sequence for tuning PID
+    public void runPIDTuningTest() {
+        if (opModeIsActive()) {
+            // Forward and back test
+            driveForward(24);  // Drive forward 24 inches
+            sleep(1000);
+            driveBackward(24); // Drive back 24 inches
+            sleep(1000);
 
-        robot.resetEncoders();
+            // Rotation test
+            turnRight(90);     // Turn 90 degrees right
+            sleep(1000);
+            turnLeft(90);      // Turn 90 degrees left
+            sleep(1000);
 
-        switch (direction) {
-            case FORWARD:
-                setTargetForAll(counts);
-                break;
-            case BACKWARD:
-                setTargetForAll(-counts);
-                break;
-            case STRAFE_LEFT:
-                robot.frontLeftDrive.setTargetPosition(-counts);
-                robot.frontRightDrive.setTargetPosition(counts);
-                robot.rearLeftDrive.setTargetPosition(counts);
-                robot.rearRightDrive.setTargetPosition(-counts);
-                break;
-            case STRAFE_RIGHT:
-                robot.frontLeftDrive.setTargetPosition(counts);
-                robot.frontRightDrive.setTargetPosition(-counts);
-                robot.rearLeftDrive.setTargetPosition(-counts);
-                robot.rearRightDrive.setTargetPosition(counts);
-                break;
+            // Strafe test
+            strafeRight(12);   // Strafe right 12 inches
+            sleep(1000);
+            strafeLeft(12);    // Strafe left 12 inches
+            sleep(1000);
         }
-
-        robot.setRunMode(DcMotor.RunMode.RUN_TO_POSITION);
-
-        switch (direction) {
-            case FORWARD:
-            case BACKWARD:
-                robot.setPower(DRIVE_SPEED);
-                break;
-            case STRAFE_LEFT:
-            case STRAFE_RIGHT:
-                robot.setPower(STRAFE_SPEED);
-                break;
-        }
-
-        while (opModeIsActive() && robot.isBusy()) {
-            telemetry.addData("Moving", direction.toString());
-            telemetry.addData("Target", counts);
-            telemetry.addData("Current Pos", robot.getCurrentPosition());
-            telemetry.update();
-        }
-
-        robot.setPower(0);
-        robot.setRunMode(DcMotor.RunMode.RUN_USING_ENCODER);
-    }
-
-    private void rotate(double degrees) {
-        int counts = (int)(degrees * robot.COUNTS_PER_DEGREE);
-
-        robot.resetEncoders();
-
-        // Set target positions for rotation
-        robot.frontLeftDrive.setTargetPosition(counts);
-        robot.frontRightDrive.setTargetPosition(-counts);
-        robot.rearLeftDrive.setTargetPosition(counts);
-        robot.rearRightDrive.setTargetPosition(-counts);
-
-        robot.setRunMode(DcMotor.RunMode.RUN_TO_POSITION);
-
-        // Set power for rotation
-        robot.setRotationPowers(TURN_SPEED);
-
-        while (opModeIsActive() && robot.isBusy()) {
-            telemetry.addData("Rotating", "%.2f degrees", degrees);
-            telemetry.addData("Target", counts);
-            telemetry.addData("Current Pos", robot.getCurrentPosition());
-            telemetry.update();
-        }
-
-        robot.setPower(0);
-        robot.setRunMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        sleep(250); // Small delay to ensure rotation is complete
-    }
-
-    private void setTargetForAll(int counts) {
-        robot.frontLeftDrive.setTargetPosition(counts);
-        robot.frontRightDrive.setTargetPosition(counts);
-        robot.rearLeftDrive.setTargetPosition(counts);
-        robot.rearRightDrive.setTargetPosition(counts);
     }
 }
-
