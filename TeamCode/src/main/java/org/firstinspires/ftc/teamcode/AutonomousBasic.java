@@ -2,182 +2,99 @@ package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.util.ElapsedTime;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
-@Autonomous(name="Basic: Autonomous", group="Basic")
+@Autonomous(name = "Autonomous Forward Test", group = "Linear OpMode")
 public class AutonomousBasic extends LinearOpMode {
 
     private RobotHardwareBasic robot = new RobotHardwareBasic();
-    private ElapsedTime runtime = new ElapsedTime();
-
-    // Movement parameters
-    private static final double DRIVE_SPEED = 0.5;
-    private static final double TURN_SPEED = 0.4;
-    private static final double STRAFE_SPEED = 0.5;
-
-    // Robot physical constants
-    private static final double ROBOT_DIAMETER_INCHES = 18.0; // Adjust based on your robot
 
     @Override
     public void runOpMode() {
+        // Initialize hardware (includes odometry)
         robot.init(hardwareMap);
 
-        // Send telemetry message to signify robot waiting
-        telemetry.addData("Status", "Ready to run");
+        // Reset odometry before the match starts
+        robot.odo.resetPosAndIMU();
+
+        telemetry.addData("Status", "Initialized & Odometry Reset");
+        telemetry.addData("Starting X (mm)", robot.getCurrentPose().getX(DistanceUnit.MM));
+        telemetry.addData("Starting Y (mm)", robot.getCurrentPose().getY(DistanceUnit.MM));
+        telemetry.addData("Starting Heading (°)", robot.getCurrentPose().getHeading(AngleUnit.DEGREES));
         telemetry.update();
 
         waitForStart();
 
         if (opModeIsActive()) {
-            // Example autonomous sequence
-            driveForward(24.0);    // Drive forward 24 inches
-            sleep(250);            // Pause for stability
-            turnRight(90.0);       // Turn 90 degrees right
-            sleep(250);
-            driveForward(12.0);    // Drive forward 12 inches
-            sleep(250);
-            strafeRight(12.0);     // Strafe right 12 inches
+            // Move forward 24 inches
+            moveForward(24, 0.5);
+        }
+    }
 
-            telemetry.addData("Path", "Complete");
+    // Move forward a specific distance in inches
+    private void moveForward(double targetInches, double power) {
+        double targetX = targetInches * 25.4; // Convert inches to mm
+        double Kp = 0.005;
+        double Ki = 0.0;
+        double Kd = 0.0;
+
+        double integral = 0;
+        double previousError = 0;
+        final double POSITION_TOLERANCE_MM = 5.0; // Stop within 5mm (~0.2 inches)
+        final double TIMEOUT_SECONDS = 5.0; // Stop after 5 seconds
+
+        double startTime = getRuntime();
+
+        while (opModeIsActive()) {
+            // Update odometry
+            robot.odo.update();
+            Pose2D currentPose = robot.getCurrentPose();
+            double currentX = currentPose.getX(DistanceUnit.MM);
+
+            // Calculate error
+            double error = targetX - currentX;
+
+            // Stop if within tolerance or if timeout is reached
+            if (Math.abs(error) < POSITION_TOLERANCE_MM || (getRuntime() - startTime > TIMEOUT_SECONDS)) {
+                stopMotors();
+                telemetry.addData("Status", "Arrived at target or timed out.");
+                telemetry.update();
+                break;
+            }
+
+            // PID calculations
+            integral += error;
+            double derivative = error - previousError;
+            double drivePower = (Kp * error) + (Ki * integral) + (Kd * derivative);
+
+            // Cap power to prevent overshoot
+            drivePower = Math.max(-power, Math.min(power, drivePower));
+
+            // Apply power to all drive motors (forward movement)
+            robot.frontLeft.setPower(drivePower);
+            robot.frontRight.setPower(drivePower);
+            robot.rearLeft.setPower(drivePower);
+            robot.rearRight.setPower(drivePower);
+
+            previousError = error;
+
+            // Debugging telemetry
+            telemetry.addData("Target X (mm)", targetX);
+            telemetry.addData("Current X (mm)", currentX);
+            telemetry.addData("Error X (mm)", error);
+            telemetry.addData("Drive Power", drivePower);
+            telemetry.addData("Time Elapsed", getRuntime() - startTime);
             telemetry.update();
         }
     }
 
-    public void driveForward(double inches) {
-        int targetCounts = (int)(inches * robot.COUNTS_PER_INCH);
-
-        // Reset encoders
-        robot.resetEncoders();
-
-        // Set target position
-        robot.setTargetPosition(targetCounts);
-
-        // Set to RUN_TO_POSITION mode
-        robot.setRunMode(DcMotor.RunMode.RUN_TO_POSITION);
-
-        // Start moving
-        robot.setPower(DRIVE_SPEED);
-
-        // Wait for movement to complete
-        while (opModeIsActive() && robot.isBusy()) {
-            telemetry.addData("Moving", "Forward: %2.1f inches", inches);
-            telemetry.addData("Target", targetCounts);
-            telemetry.addData("Current Pos", robot.getCurrentPosition());
-            telemetry.update();
-        }
-
-        // Stop all motion
-        robot.setPower(0);
-        robot.setRunMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-        // Optional pause
-        sleep(250);
-    }
-
-    public void driveBackward(double inches) {
-        driveForward(-inches);
-    }
-
-    public void strafeRight(double inches) {
-        int targetCounts = (int)(inches * robot.COUNTS_PER_INCH);
-
-        robot.resetEncoders();
-
-        // Set individual targets for strafing
-        robot.frontLeftDrive.setTargetPosition(targetCounts);
-        robot.frontRightDrive.setTargetPosition(-targetCounts);
-        robot.rearLeftDrive.setTargetPosition(-targetCounts);
-        robot.rearRightDrive.setTargetPosition(targetCounts);
-
-        robot.setRunMode(DcMotor.RunMode.RUN_TO_POSITION);
-
-        // Set power for strafing
-        robot.setIndividualPowers(STRAFE_SPEED, -STRAFE_SPEED, -STRAFE_SPEED, STRAFE_SPEED);
-
-        // Wait for movement to complete
-        while (opModeIsActive() && robot.isBusy()) {
-            telemetry.addData("Strafing", "Right: %2.1f inches", inches);
-            telemetry.addData("Current Pos", robot.getCurrentPosition());
-            telemetry.update();
-        }
-
-        // Stop all motion
-        robot.setPower(0);
-        robot.setRunMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-        sleep(250);
-    }
-
-    public void strafeLeft(double inches) {
-        strafeRight(-inches);
-    }
-
-    public void turnRight(double degrees) {
-        // Calculate the number of encoder counts for the turn
-        double inches = (degrees / 360.0) * Math.PI * ROBOT_DIAMETER_INCHES;
-        int targetCounts = (int)(inches * robot.COUNTS_PER_INCH);
-
-        robot.resetEncoders();
-
-        // Set individual targets for turning
-        robot.frontLeftDrive.setTargetPosition(targetCounts);
-        robot.frontRightDrive.setTargetPosition(-targetCounts);
-        robot.rearLeftDrive.setTargetPosition(targetCounts);
-        robot.rearRightDrive.setTargetPosition(-targetCounts);
-
-        robot.setRunMode(DcMotor.RunMode.RUN_TO_POSITION);
-
-        // Set power for turning
-        robot.setIndividualPowers(TURN_SPEED, -TURN_SPEED, TURN_SPEED, -TURN_SPEED);
-
-        // Wait for movement to complete
-        while (opModeIsActive() && robot.isBusy()) {
-            telemetry.addData("Turning", "Right: %2.1f degrees", degrees);
-            telemetry.addData("Target", targetCounts);
-            telemetry.addData("Current Pos", robot.getCurrentPosition());
-            logMotorPositions();
-            telemetry.update();
-        }
-
-        // Stop all motion
-        robot.setPower(0);
-        robot.setRunMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-        sleep(250);
-    }
-
-    public void turnLeft(double degrees) {
-        turnRight(-degrees);
-    }
-
-    private void logMotorPositions() {
-        telemetry.addData("FL Position", robot.frontLeftDrive.getCurrentPosition());
-        telemetry.addData("FR Position", robot.frontRightDrive.getCurrentPosition());
-        telemetry.addData("RL Position", robot.rearLeftDrive.getCurrentPosition());
-        telemetry.addData("RR Position", robot.rearRightDrive.getCurrentPosition());
-    }
-
-    // Test sequence for tuning PID
-    public void runPIDTuningTest() {
-        if (opModeIsActive()) {
-            // Forward and back test
-            driveForward(24);  // Drive forward 24 inches
-            sleep(1000);
-            driveBackward(24); // Drive back 24 inches
-            sleep(1000);
-
-            // Rotation test
-            turnRight(90);     // Turn 90 degrees right
-            sleep(1000);
-            turnLeft(90);      // Turn 90 degrees left
-            sleep(1000);
-
-            // Strafe test
-            strafeRight(12);   // Strafe right 12 inches
-            sleep(1000);
-            strafeLeft(12);    // Strafe left 12 inches
-            sleep(1000);
-        }
+    // Stop all motors
+    private void stopMotors() {
+        robot.frontLeft.setPower(0);
+        robot.frontRight.setPower(0);
+        robot.rearLeft.setPower(0);
+        robot.rearRight.setPower(0);
     }
 }
