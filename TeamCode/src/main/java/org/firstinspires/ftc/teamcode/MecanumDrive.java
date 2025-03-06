@@ -83,7 +83,7 @@ public class MecanumDrive extends LinearOpMode {
             }
 
             // Clamp position to servo limits (0.0 to 0.9)
-            arm1RotationPosition = Math.max(0.0, Math.min(0.9, arm1RotationPosition));
+            arm1RotationPosition = Math.max(0.0, Math.min(1.0, arm1RotationPosition));
 
             // Apply new position to servo
             robot.arm1RotationServo.setPosition(arm1RotationPosition);

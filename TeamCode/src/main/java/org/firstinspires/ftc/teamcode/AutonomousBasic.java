@@ -44,7 +44,7 @@ public class AutonomousBasic extends LinearOpMode {
         double previousError = 0;
         final double POSITION_TOLERANCE_MM = 5.0; // Stop within 5mm (~0.2 inches)
         final double TIMEOUT_SECONDS = 5.0; // Stop after 5 seconds
-
+        final double INTEGRAL_BOUND = 100.0; // **Limit integral to ±100**
         double startTime = getRuntime();
 
         while (opModeIsActive()) {
@@ -66,6 +66,9 @@ public class AutonomousBasic extends LinearOpMode {
 
             // PID calculations
             integral += error;
+            integral = Math.max(-INTEGRAL_BOUND, Math.min(INTEGRAL_BOUND, integral)); // **Clamp integral**
+
+
             double derivative = error - previousError;
             double drivePower = (Kp * error) + (Ki * integral) + (Kd * derivative);
 
@@ -86,6 +89,16 @@ public class AutonomousBasic extends LinearOpMode {
             telemetry.addData("Error X (mm)", error);
             telemetry.addData("Drive Power", drivePower);
             telemetry.addData("Time Elapsed", getRuntime() - startTime);
+            telemetry.update();
+        }
+        // **Keep telemetry up for 30 seconds after stopping**
+        double stopTime = getRuntime();
+        while (opModeIsActive() && getRuntime() - stopTime < 30) {
+            telemetry.addData("Final Status", "Stopped - Holding telemetry for review.");
+            telemetry.addData("Final Target X (mm)", targetX);
+            telemetry.addData("Final Position X (mm)", robot.getCurrentPose().getX(DistanceUnit.MM));
+            telemetry.addData("Final Error X (mm)", targetX - robot.getCurrentPose().getX(DistanceUnit.MM));
+            telemetry.addData("Final Time Elapsed", getRuntime() - startTime);
             telemetry.update();
         }
     }
