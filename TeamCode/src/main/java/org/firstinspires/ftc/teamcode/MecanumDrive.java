@@ -21,27 +21,28 @@ public class MecanumDrive extends LinearOpMode {
 
         waitForStart();
 
+        if (isStopRequested()) return;
+
         while (opModeIsActive()) {
             // **Driver Controls (Gamepad A)**
             double drive = -gamepad1.left_stick_y; // Forward/Backward
-            double strafe = gamepad1.left_stick_x; // Left/Right
+            double strafe = gamepad1.left_stick_x * 1.1; // Counteract imperfect strafing
             double rotate = gamepad1.right_stick_x; // Rotation
 
-            double frontLeftPower = drive + strafe + rotate;
-            double frontRightPower = drive - strafe - rotate;
-            double rearLeftPower = drive - strafe + rotate;
-            double rearRightPower = drive + strafe - rotate;
+            // Denominator is the largest motor power (absolute value) or 1
+            // This ensures all the powers maintain the same ratio,
+            // but only if at least one is out of the range [-1, 1]
+            double denominator = Math.max(Math.abs(drive) + Math.abs(strafe) + Math.abs(rotate), 1);
+            double frontLeftPower = (drive + strafe + rotate) / denominator;
+            double frontRightPower = (drive - strafe - rotate) / denominator;
+            double rearLeftPower = (drive - strafe + rotate) / denominator;
+            double rearRightPower = (drive + strafe - rotate)/ denominator;
 
-            double maxPower = Math.max(1.0, Math.max(
-                    Math.abs(frontLeftPower),
-                    Math.max(Math.abs(frontRightPower),
-                    Math.max(Math.abs(rearLeftPower),
-                    Math.abs(rearRightPower)))));
 
-            robot.frontLeftDrive.setPower(frontLeftPower / maxPower);
-            robot.frontRightDrive.setPower(frontRightPower / maxPower);
-            robot.rearLeftDrive.setPower(rearLeftPower / maxPower);
-            robot.rearRightDrive.setPower(rearRightPower / maxPower);
+            robot.frontLeftDrive.setPower(frontLeftPower);
+            robot.frontRightDrive.setPower(frontRightPower);
+            robot.rearLeftDrive.setPower(rearLeftPower);
+            robot.rearRightDrive.setPower(rearRightPower);
 
             // **Operator Controls (Gamepad B)**
 
