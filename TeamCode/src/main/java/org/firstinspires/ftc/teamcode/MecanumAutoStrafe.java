@@ -8,6 +8,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 @Autonomous(name = "Strafe Right 1 Foot", group = "Mecanum")
 public class MecanumAutoStrafe extends LinearOpMode {
 
+    private RobotHardware robot;
     private DcMotor frontLeftDrive = null;
     private DcMotor frontRightDrive = null;
     private DcMotor rearLeftDrive = null;
@@ -24,6 +25,9 @@ public class MecanumAutoStrafe extends LinearOpMode {
     @Override
     public void runOpMode() {
         // Initialize hardware
+
+        robot = new RobotHardware(hardwareMap);
+
         frontLeftDrive = hardwareMap.get(DcMotor.class, "frontLeftDrive");
         frontRightDrive = hardwareMap.get(DcMotor.class, "frontRightDrive");
         rearLeftDrive = hardwareMap.get(DcMotor.class, "rearLeftDrive");
@@ -136,3 +140,4 @@ public class MecanumAutoStrafe extends LinearOpMode {
         rearRightDrive.setPower(0);
     }
 }
+
