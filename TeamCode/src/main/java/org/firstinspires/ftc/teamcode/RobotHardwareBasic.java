@@ -16,7 +16,7 @@ public class RobotHardwareBasic {
     public GoBildaPinpointDriver odo = null;
 
     // PID Coefficients
-    public double Kp = 0.005;
+    public double Kp = 0.004;
     public double Ki = 0.0;
     public double Kd = 0.0;
 
