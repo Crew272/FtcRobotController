@@ -1,70 +1,143 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.util.ElapsedTime;
-import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
-import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import com.qualcomm.robotcore.hardware.IMU;
+
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import java.util.Locale;
+
 
 public class RobotHardwareBasic {
-    public DcMotor frontLeft = null;
-    public DcMotor frontRight = null;
-    public DcMotor rearLeft = null;
-    public DcMotor rearRight = null;
-    public GoBildaPinpointDriver odo = null;
 
-    // PID Coefficients
-    public double Kp = 0.004;
-    public double Ki = 0.0;
-    public double Kd = 0.0;
+    // Motor declarations
+    public DcMotorEx frontLeft;
+    public DcMotorEx frontRight;
+    public DcMotorEx rearLeft;
+    public DcMotorEx rearRight;
 
-    HardwareMap hwMap = null;
-    private ElapsedTime period = new ElapsedTime();
+    // IMU declaration
+    public IMU imu;
 
-    public void init(HardwareMap ahwMap) {
-        hwMap = ahwMap;
+    // Wheel diameter in mm
+    private final double WHEEL_DIAMETER_MM = 100.0;
 
+    // Encoder ticks per revolution for the AndyMark NeverRest 20
+    private final double TICKS_PER_REV = 537.7;
+
+    // Robot dimensions (distance between wheel centers) in mm
+    private final double TRACK_WIDTH_MM = 315.0; // Center to center distance between side wheels
+    private final double WHEEL_BASE_MM = 315.0; // Center to center distance between front and back wheels
+
+    // Current robot position
+    private double currentX = 0;
+    private double currentY = 0;
+    private double currentHeading = 0;
+
+    public void init(HardwareMap hwMap) {
         // Initialize motors
-        frontLeft = hwMap.get(DcMotor.class, "frontLeftDrive");
-        frontRight = hwMap.get(DcMotor.class, "frontRightDrive");
-        rearLeft = hwMap.get(DcMotor.class, "rearLeftDrive");
-        rearRight = hwMap.get(DcMotor.class, "rearRightDrive");
+        frontLeft = hwMap.get(DcMotorEx.class, "frontLeft");
+        frontRight = hwMap.get(DcMotorEx.class, "frontRight");
+        rearLeft = hwMap.get(DcMotorEx.class, "rearLeft");
+        rearRight = hwMap.get(DcMotorEx.class, "rearRight");
 
         // Set motor directions
-        frontLeft.setDirection(DcMotor.Direction.REVERSE);
-        rearLeft.setDirection(DcMotor.Direction.REVERSE);
+        frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
+        rearLeft.setDirection(DcMotorSimple.Direction.REVERSE);
+        frontRight.setDirection(DcMotorSimple.Direction.FORWARD);
+        rearRight.setDirection(DcMotorSimple.Direction.FORWARD);
 
-        // Enable Brake Mode
+        // Set motor modes
+        frontLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        frontRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rearLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rearRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
+        frontLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        frontRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        rearLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        rearRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        // Set zero power behavior
         frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rearLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rearRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        // Set motors to zero power initially
-        frontLeft.setPower(0);
-        frontRight.setPower(0);
-        rearLeft.setPower(0);
-        rearRight.setPower(0);
-
-        // Set motors to run without encoders (Odometry will handle positioning)
-        frontLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        frontRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        rearLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        rearRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-
-        // Initialize Odometry
-        odo = hwMap.get(GoBildaPinpointDriver.class, "pinpointOdometry");
-        odo.setOffsets(50.0, 45.0);
-        odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
-        odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.REVERSED, GoBildaPinpointDriver.EncoderDirection.REVERSED);
-        odo.resetPosAndIMU();
+        // Initialize IMU (Rev Expansion Hub)
+        imu = hwMap.get(IMU.class, "imu");
+        // Adjust the orientation parameters based on how your hub is mounted
+        IMU.Parameters parameters = new IMU.Parameters(new RevHubOrientationOnRobot(
+                RevHubOrientationOnRobot.LogoFacingDirection.UP,
+                RevHubOrientationOnRobot.UsbFacingDirection.FORWARD));
+        imu.initialize(parameters);
     }
 
-    // Update odometry readings
-    public Pose2D getCurrentPose() {
-        odo.update();
-        return odo.getPosition();
+    public void resetPosAndIMU() {
+        // Reset motor encoders
+        frontLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        frontRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rearLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rearRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
+        frontLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        frontRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        rearLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        rearRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        // Reset IMU
+        imu.resetYaw();
+
+        // Reset current pose
+        currentX = 0;
+        currentY = 0;
+        currentHeading = 0;
+    }
+
+    public void update() {
+        // Get encoder values
+        int flPos = frontLeft.getCurrentPosition();
+        int frPos = frontRight.getCurrentPosition();
+        int rlPos = rearLeft.getCurrentPosition();
+        int rrPos = rearRight.getCurrentPosition();
+
+        // Calculate distance traveled by each wheel
+        double flDist = encoderTicksToDistance(flPos);
+        double frDist = encoderTicksToDistance(frPos);
+        double rlDist = encoderTicksToDistance(rlPos);
+        double rrDist = encoderTicksToDistance(rrPos);
+
+        // Calculate average forward/backward movement
+        double forwardBackward = (flDist + frDist + rlDist + rrDist) / 4.0;
+
+        // Calculate average strafing movement
+        double strafe = (frDist + rlDist - flDist - rrDist) / 4.0;
+
+        // Calculate change in heading
+        double deltaHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+
+        // Update current pose
+        currentX = currentX + forwardBackward * Math.cos(currentHeading) - strafe * Math.sin(currentHeading);
+        currentY = currentY + forwardBackward * Math.sin(currentHeading) + strafe * Math.cos(currentHeading);
+        currentHeading = deltaHeading;
+    }
+
+    // Helper method to convert encoder ticks to distance (mm)
+    private double encoderTicksToDistance(int ticks) {
+        double wheelCircumference = Math.PI * WHEEL_DIAMETER_MM;
+        double distancePerTick = wheelCircumference / TICKS_PER_REV;
+        return ticks * distancePerTick;
+    }
+
+    public double getCurrentX() {
+        return currentX;
+    }
+    public double getCurrentY() {
+        return currentY;
+    }
+    public double getCurrentHeading() {
+        return currentHeading;
     }
 }
