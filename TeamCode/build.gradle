@@ -23,6 +23,12 @@ android {
     }
 }
 
+repositories {
+    maven { url 'https://maven.brott.dev/' } // Required for FTC Dashboard
+    mavenCentral()
+}
+
 dependencies {
     implementation project(':FtcRobotController')
+    implementation 'com.acmerobotics.dashboard:dashboard:0.4.14'
 }

@@ -1,83 +1,67 @@
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.hardware.bosch.BNO055IMU;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.hardware.TouchSensor;
-import com.qualcomm.robotcore.hardware.CRServo;
+import com.qualcomm.robotcore.util.RobotLog;
 
 public class RobotHardware {
-    // Drivetrain Motors (Mecanum Wheels)
-    public DcMotor frontLeftDrive;
-    public DcMotor frontRightDrive;
-    public DcMotor rearLeftDrive;
-    public DcMotor rearRightDrive;
+    public DcMotorEx frontLeft = null;
+    public DcMotorEx backLeft = null;
+    public DcMotorEx frontRight = null;
+    public DcMotorEx backRight = null;
+    public BNO055IMU imu = null;
 
-    // Grabber 1 Components
-    public DcMotor grabber1LiftMotor;
-    public Servo arm1RotationServo;
-    public Servo claw1GrabServo;
+    private HardwareMap hardwareMap = null;
 
-    // Touch Sensor for LiftMotor Zero Position
-    public TouchSensor grabber1DownSwitch;
+    public void init(HardwareMap hwMap) {
+        hardwareMap = hwMap;
 
-    // Grabber 2 Components
-    // not using //public Servo slideLeftServo;
-    public Servo slideRightServo;
-    public CRServo intake1;
-    public Servo upAndDownServo; // Added servo for up and down movement
+        try {
+            frontLeft = hardwareMap.get(DcMotorEx.class, "frontLeft");
+            backLeft = hardwareMap.get(DcMotorEx.class, "backLeft");
+            frontRight = hardwareMap.get(DcMotorEx.class, "frontRight");
+            backRight = hardwareMap.get(DcMotorEx.class, "backRight");
 
+            frontLeft.setDirection(DcMotorEx.Direction.REVERSE);
+            backLeft.setDirection(DcMotorEx.Direction.REVERSE);
+            frontRight.setDirection(DcMotorEx.Direction.FORWARD);
+            backRight.setDirection(DcMotorEx.Direction.FORWARD);
 
+            frontLeft.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+            backLeft.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+            frontRight.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+            backRight.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
 
-    // Hardware Map
-    private HardwareMap hardwareMap;
+            frontLeft.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+            backLeft.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+            frontRight.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+            backRight.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
 
-    // Encoder limit for the lift
-    public static final int LIFT_MAX_HEIGHT_TICKS = -4000;
+            frontLeft.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+            backLeft.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+            frontRight.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+            backRight.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
 
-    // Constructor
-    public RobotHardware(HardwareMap hardwareMap) {
-        this.hardwareMap = hardwareMap;
-        initializeHardware();
+            imu = hardwareMap.get(BcMotorEx.class, "imu");
+            BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
+            parameters.angleUnit = BNO055IMU.AngleUnit.RADIANS;
+            parameters.accelUnit = BNO055IMU.AccelUnit.METERS_PERSEC_PERSEC;
+            parameters.mode = BNO055IMU.SensorMode.IMU;
+            imu.initialize(parameters);
+        } catch (Exception e) {
+            RobotLog.ee("RobotHardware", "Error initializing hardware: %s", e.getMessage());
+        }
     }
 
-    private void initializeHardware() {
-        // Drivetrain Motors Initialization
-        frontLeftDrive = hardwareMap.dcMotor.get("frontLeftDrive");
-        frontRightDrive = hardwareMap.dcMotor.get("frontRightDrive");
-        rearLeftDrive = hardwareMap.dcMotor.get("rearLeftDrive");
-        rearRightDrive = hardwareMap.dcMotor.get("rearRightDrive");
-
-        frontLeftDrive.setDirection(DcMotorSimple.Direction.REVERSE);
-        frontRightDrive.setDirection(DcMotorSimple.Direction.FORWARD);
-        rearLeftDrive.setDirection(DcMotorSimple.Direction.REVERSE);
-        rearRightDrive.setDirection(DcMotorSimple.Direction.FORWARD);
-        frontLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        frontRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        rearLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        rearRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        // Grabber 1 Initialization
-        // Initialize the lift motor
-        grabber1LiftMotor = hardwareMap.dcMotor.get("grabber1LiftMotor");
-        // Touch Sensor Initialization
-        grabber1DownSwitch = hardwareMap.touchSensor.get("grabber1DownSwitch");
-        arm1RotationServo = hardwareMap.servo.get("arm1RotationServo");
-        claw1GrabServo = hardwareMap.servo.get("claw1GrabServo");
-        // Configure motor
-        grabber1LiftMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        grabber1LiftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        grabber1LiftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        // Grabber 2 Initialization
-        slideRightServo = hardwareMap.servo.get("slideRightServo");
-        intake1 = hardwareMap.get(CRServo.class, "intake1");
-        upAndDownServo = hardwareMap.servo.get("upAndDownServo");  // New servo
+    public double getHeading() {
+        return imu.getAngularOrientation().firstAngle;
     }
 
-    // Returns whether the lift is at the lowest position
-    public boolean isLiftAtBottom() {
-        return grabber1DownSwitch.isPressed();
+    public void testMotorDirections() {
+        frontLeft.setPower(0.2);
+        backLeft.setPower(0.2);
+        frontRight.setPower(0.2);
+        backRight.setPower(0.2);
     }
 }
